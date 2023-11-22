@@ -2,6 +2,8 @@ import express, { Express, Request, Response } from 'express';
 import * as dotenv from 'dotenv';
 import morgan from 'morgan';
 
+import ConvoRoute from './routes/convo.route';
+
 dotenv.config();
 
 const app: Express = express();
@@ -10,6 +12,8 @@ const app: Express = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(morgan('dev'));
+
+app.use('/convo', ConvoRoute);
 
 // Default Route
 app.get('/', (_req: Request, res: Response) => {
