@@ -1,9 +1,8 @@
 import * as dotenv from 'dotenv';
-dotenv.config();
-import { OpenAI } from "langchain/llms/openai";
 import { PromptTemplate } from "langchain/prompts";
 import { ChatOpenAI } from "langchain/chat_models/openai";
 
+dotenv.config();
 const OpenAIKey = process.env.OPENAI_API_KEY;
 
 interface convoPayload {
@@ -26,14 +25,20 @@ class ConvoService {
             const result = await chain.invoke({
                 userInput: userInput.message
             });
-
-            return result.content;
+            
+            const cleanQuery = await this.cleanSQLQuery(result.content);
+            return cleanQuery;
 
         } catch(err:any) {
             console.error(err);
             throw err;
         }
         
+    }
+
+    private async cleanSQLQuery(query: any) {
+        const cleanedQuery = query.replace(/\n/g, ' ');
+        return cleanedQuery;
     }
 
 
