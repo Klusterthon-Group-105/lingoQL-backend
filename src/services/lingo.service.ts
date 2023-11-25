@@ -9,7 +9,7 @@ interface convoPayload {
     message: string;
 }
 
-class ConvoService {
+class LingoService {
 
     constructor(
         private model =  new ChatOpenAI({ openAIApiKey: OpenAIKey, temperature: 0.9, })
@@ -44,4 +44,4 @@ class ConvoService {
 
 }
 
-export default ConvoService;
+export default LingoService;

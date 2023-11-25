@@ -2,7 +2,7 @@ import express, { Express, Request, Response } from 'express';
 import * as dotenv from 'dotenv';
 import morgan from 'morgan';
 
-import ConvoRoute from './routes/convo.route';
+import LingoRoute from './routes/lingo.route';
 
 dotenv.config();
 
@@ -13,7 +13,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(morgan('dev'));
 
-app.use('/convo', ConvoRoute);
+app.use('/convo', LingoRoute);
 
 // Default Route
 app.get('/', (_req: Request, res: Response) => {

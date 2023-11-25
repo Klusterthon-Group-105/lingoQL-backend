@@ -1,1 +1,1 @@
-export * from './convo.service';
+export * from './lingo.service';
