@@ -1,4 +1,6 @@
 import * as dotenv from 'dotenv';
+import * as net from 'net';
+import * as url from 'url';
 import { PromptTemplate } from "langchain/prompts";
 import { ChatOpenAI } from "langchain/chat_models/openai";
 import { CSVLoader } from "langchain/document_loaders/fs/csv";
@@ -6,8 +8,7 @@ import { SqlDatabase } from "langchain/sql_db";
 import { DataSource } from "typeorm";
 import { SqlDatabaseChain } from "langchain/chains/sql_db";
 import { createSqlAgent, SqlToolkit } from "langchain/agents/toolkits/sql";
-import * as net from 'net';
-import * as url from 'url';
+
 
 dotenv.config();
 const OpenAIKey = process.env.OPENAI_API_KEY;
@@ -65,38 +66,12 @@ class LingoService {
         
     }
 
-    private async loadCSVFromBuffer(csvBuffer: Buffer) {
-        const csv_file = await this.bufferToString(csvBuffer);
-        const loader = new CSVLoader(csv_file);
-        const docs = await loader.load();
-        return docs;
-    }
-
-    public async cleanAndProcessedData(csvBuffer: any) {
-        const csvString = this.loadCSVFromBuffer(csvBuffer);
-
-        return csvString;
-
-    }
-
-    public async extractInsights(cleanedData: any) {}
-
-
-    public async suggestiveSQLQuestion(extractInsights: any) {}
-
-
     private async cleanSQLQuery(query: any) {
         const cleanedQuery = query.replace(/\n/g, ' ');
         return cleanedQuery;
     }
 
-    private async bufferToString(buffer: Buffer): Promise<string> {
-        return buffer.toString('utf-8');
-    }
-
-
     public async askYourDB(payload: askYourDBPayload) {
-
         let port: number;
 
         if (payload.dbType === 'postgres') {

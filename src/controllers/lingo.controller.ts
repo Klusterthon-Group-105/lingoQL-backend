@@ -17,21 +17,6 @@ class LingoController {
         }
     }
 
-    public async uploadCSV(req: Request, res: Response) {
-        try {
-            const file = req.file;
-
-            console.log(file);
-
-            const response = await lingoService.cleanAndProcessedData(file);
-            return res.status(200).json(response);
-
-        } catch(err:any) {
-            console.error('Provide Suggestive Input error:', err);
-            throw err;
-        }
-    }
-
     public async askYourDB(req: Request, res: Response){
         try {
             const response = await lingoService.askYourDB(req.body);

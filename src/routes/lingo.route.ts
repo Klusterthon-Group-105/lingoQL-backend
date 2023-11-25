@@ -8,9 +8,6 @@ const storage: multer.StorageEngine = multer.memoryStorage();
 const upload: multer.Multer = multer({ storage: storage }); 
 
 router.post('/query', lingoController.convertUserInputToSQL);
-
-router.post('/upload_csv', upload.single('data'), lingoController.uploadCSV);
-
 router.post('/query-your-db', lingoController.askYourDB);
 
 
