@@ -5,7 +5,7 @@ import { PromptTemplate } from "langchain/prompts";
 import { ChatOpenAI } from "langchain/chat_models/openai";
 import { CSVLoader } from "langchain/document_loaders/fs/csv";
 import { SqlDatabase } from "langchain/sql_db";
-import { DataSource } from "typeorm";
+import { DataSourceOptions, DataSource } from "typeorm";
 import { SqlDatabaseChain } from "langchain/chains/sql_db";
 import { createSqlAgent, SqlToolkit } from "langchain/agents/toolkits/sql";
 
@@ -66,10 +66,6 @@ class LingoService {
         
     }
 
-    private async cleanSQLQuery(query: any) {
-        const cleanedQuery = query.replace(/\n/g, ' ');
-        return cleanedQuery;
-    }
 
     public async askYourDB(payload: askYourDBPayload) {
         let port: number;
@@ -80,34 +76,34 @@ class LingoService {
             port = 3306;
         }
         // Check if database is active
-        const grabURIInfo = await this.extractHost(payload.dbURI);
+        const grabURIInfo = await this.extractConnectionDetails(payload.dbURI);
         const isDatabaseUP = await this.pingDatabase(grabURIInfo.hostname, port);
         if (isDatabaseUP) {
-            console.log('Database is up and active.');
-        } else {
-            console.log('Database is not reachable or active.');
+            console.info('Database is up and active.');
+            const datasource = new DataSource({
+                type: payload.dbType,
+                database: payload.dbURI,
+            });
+    
+            console.log
+    
+            const db = await SqlDatabase.fromDataSourceParams({
+                appDataSource: datasource,
+            });
+    
+            const toolkit = new SqlToolkit(db, this.model);
+            const executor = createSqlAgent(this.model, toolkit);
+    
+            console.log(`Executing with input "${payload.userInput}"...`);
+            const input = payload.userInput
+            const result = await executor.invoke({ input });
+    
+            console.log(`Got output ${result.output}`);
+    
+            return result;
         }
+        throw new Error('Database is not reachable or active.');
 
-        const datasource = new DataSource({
-            type: payload.dbType,
-            database: payload.dbURI,
-        });
-
-        const db = await SqlDatabase.fromDataSourceParams({
-            appDataSource: datasource,
-        });
-
-        const toolkit = new SqlToolkit(db, this.model);
-        const executor = createSqlAgent(this.model, toolkit);
-
-        
-        console.log(`Executing with input "${payload.userInput}"...`);
-        const input = payload.userInput
-        const result = await executor.invoke({ input });
-
-        console.log(`Got output ${result.output}`);
-
-        return result;
 
 
         
@@ -125,6 +121,11 @@ class LingoService {
 
         const result = await db_chain.run(payload.userInput);
         return result; */
+    }
+
+    private async cleanSQLQuery(query: any) {
+        const cleanedQuery = query.replace(/\n/g, ' ');
+        return cleanedQuery;
     }
 
     private async pingDatabase(host: string, port: number): Promise<boolean> {
@@ -153,10 +154,13 @@ class LingoService {
         });
     }
 
-    private async extractHost(databaseUri: string): Promise<{ hostname: string }> {
+    private async extractConnectionDetails(databaseUri: string): Promise<{ hostname: string, username: string, password: string, database: string }> {
         const parsedUrl = new url.URL(databaseUri);
         return {
-            hostname: parsedUrl.hostname
+            hostname: parsedUrl.hostname,
+            username: parsedUrl.username,
+            password: parsedUrl.password,
+            database: parsedUrl.pathname.substring(1),
         };
     }
 }
