@@ -1,6 +1,13 @@
 import * as dotenv from 'dotenv';
 import { PromptTemplate } from "langchain/prompts";
 import { ChatOpenAI } from "langchain/chat_models/openai";
+import { CSVLoader } from "langchain/document_loaders/fs/csv";
+import { SqlDatabase } from "langchain/sql_db";
+import { DataSource } from "typeorm";
+import { SqlDatabaseChain } from "langchain/chains/sql_db";
+import { createSqlAgent, SqlToolkit } from "langchain/agents/toolkits/sql";
+import * as net from 'net';
+import * as url from 'url';
 
 dotenv.config();
 const OpenAIKey = process.env.OPENAI_API_KEY;
@@ -8,6 +15,28 @@ const OpenAIKey = process.env.OPENAI_API_KEY;
 interface convoPayload {
     message: string;
 }
+
+interface askYourDBPayload {
+    dbType: any,
+    dbURI: string,
+    userInput: string
+}
+
+const template = `
+I want you to act as an informant who gives back information about a query from a SQL database
+
+when provided with the query question and the results from the database, answer the query question in a easy-to-understand manner using few word.
+
+--Examples--
+reply this query 'how many cars were sold' using this result (11914,)  ->  '11914 cars were sold.'
+reply this query 'what are the different Market Categories return the top 2' using this result [('high-performance',), ('luxury',)]  ->  'The top two market categories are high-performance and luxury.'
+reply this query 'what is the average Number of Doors' using this result [(3.4360933825999327,)] -> The average number of doors is 3.44.
+
+reply this query {query} using this result {result}
+
+response ""
+
+`
 
 class LingoService {
 
@@ -36,12 +65,127 @@ class LingoService {
         
     }
 
+    private async loadCSVFromBuffer(csvBuffer: Buffer) {
+        const csv_file = await this.bufferToString(csvBuffer);
+        const loader = new CSVLoader(csv_file);
+        const docs = await loader.load();
+        return docs;
+    }
+
+    public async cleanAndProcessedData(csvBuffer: any) {
+        const csvString = this.loadCSVFromBuffer(csvBuffer);
+
+        return csvString;
+
+    }
+
+    public async extractInsights(cleanedData: any) {}
+
+
+    public async suggestiveSQLQuestion(extractInsights: any) {}
+
+
     private async cleanSQLQuery(query: any) {
         const cleanedQuery = query.replace(/\n/g, ' ');
         return cleanedQuery;
     }
 
+    private async bufferToString(buffer: Buffer): Promise<string> {
+        return buffer.toString('utf-8');
+    }
 
+
+    public async askYourDB(payload: askYourDBPayload) {
+
+        let port: number;
+
+        if (payload.dbType === 'postgres') {
+            port = 5432;
+        } else {
+            port = 3306;
+        }
+        // Check if database is active
+        const grabURIInfo = await this.extractHost(payload.dbURI);
+        const isDatabaseUP = await this.pingDatabase(grabURIInfo.hostname, port);
+        if (isDatabaseUP) {
+            console.log('Database is up and active.');
+        } else {
+            console.log('Database is not reachable or active.');
+        }
+
+        const datasource = new DataSource({
+            type: payload.dbType,
+            database: payload.dbURI,
+        });
+
+        const db = await SqlDatabase.fromDataSourceParams({
+            appDataSource: datasource,
+        });
+
+        const toolkit = new SqlToolkit(db, this.model);
+        const executor = createSqlAgent(this.model, toolkit);
+
+        
+        console.log(`Executing with input "${payload.userInput}"...`);
+        const input = payload.userInput
+        const result = await executor.invoke({ input });
+
+        console.log(`Got output ${result.output}`);
+
+        return result;
+
+
+        
+        /* const prompt = new PromptTemplate({
+            inputVariables: ["query","result"],
+            template: template
+        });
+
+        const db_chain = new SqlDatabaseChain({
+            llm: this.model,
+            database: db,
+            verbose: true,
+            prompt: prompt
+        });
+
+        const result = await db_chain.run(payload.userInput);
+        return result; */
+    }
+
+    private async pingDatabase(host: string, port: number): Promise<boolean> {
+        return new Promise((resolve) => {
+            const client = net.createConnection({ host, port });
+    
+            // Set a timeout for the connection attempt
+            client.setTimeout(1000);
+    
+            client.on('connect', () => {
+                // Connection successful
+                client.end();
+                resolve(true);
+            });
+    
+            client.on('timeout', () => {
+                // Connection timed out
+                client.destroy();
+                resolve(false);
+            });
+    
+            client.on('error', () => {
+                // Connection failed
+                resolve(false);
+            });
+        });
+    }
+
+    private async extractHost(databaseUri: string): Promise<{ hostname: string }> {
+        const parsedUrl = new url.URL(databaseUri);
+        return {
+            hostname: parsedUrl.hostname
+        };
+    }
 }
+
+
 
 export default LingoService;

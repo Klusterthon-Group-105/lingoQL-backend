@@ -13,7 +13,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(morgan('dev'));
 
-app.use('/convo', LingoRoute);
+app.use('/api/lingo', LingoRoute);
 
 // Default Route
 app.get('/', (_req: Request, res: Response) => {
