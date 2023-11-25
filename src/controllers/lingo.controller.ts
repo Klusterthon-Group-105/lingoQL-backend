@@ -23,7 +23,7 @@ class LingoController {
             return res.status(200).json(response);
         } catch(err:any) {
             console.error('Ask Your DB error:', err);
-            throw err;
+            throw new Error(err);
         }
     }
 

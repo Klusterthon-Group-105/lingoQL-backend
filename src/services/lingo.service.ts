@@ -8,6 +8,7 @@ import { SqlDatabase } from "langchain/sql_db";
 import { DataSourceOptions, DataSource } from "typeorm";
 import { SqlDatabaseChain } from "langchain/chains/sql_db";
 import { createSqlAgent, SqlToolkit } from "langchain/agents/toolkits/sql";
+import { Client } from 'pg';
 
 
 dotenv.config();
@@ -68,28 +69,53 @@ class LingoService {
 
 
     public async askYourDB(payload: askYourDBPayload) {
-        let port: number;
+        // const client = new Client({ connectionString: payload.dbURI });
+        // await client.connect();
+        const prompt = new PromptTemplate({
+            inputVariables: ["query","result"],
+            template: template
+        });
+
+        try {
+            let port: number;
 
         if (payload.dbType === 'postgres') {
             port = 5432;
         } else {
             port = 3306;
         }
-        // Check if database is active
+
         const grabURIInfo = await this.extractConnectionDetails(payload.dbURI);
+
         const isDatabaseUP = await this.pingDatabase(grabURIInfo.hostname, port);
+
         if (isDatabaseUP) {
-            console.info('Database is up and active.');
+            console.info('Database is up and active');
+
             const datasource = new DataSource({
                 type: payload.dbType,
                 database: payload.dbURI,
             });
-    
-            console.log
-    
+
             const db = await SqlDatabase.fromDataSourceParams({
                 appDataSource: datasource,
             });
+
+            console.log('Database info:', db);
+
+            const db_chain = new SqlDatabaseChain({
+                llm: this.model,
+                database: db,
+                verbose: true,
+                prompt: prompt
+            });
+
+            console.log('Database info:', db_chain);
+
+            const result = await db_chain.run(payload.userInput);
+            return result
+
+            /* console.info("Connected to the database:", db);
     
             const toolkit = new SqlToolkit(db, this.model);
             const executor = createSqlAgent(this.model, toolkit);
@@ -100,9 +126,15 @@ class LingoService {
     
             console.log(`Got output ${result.output}`);
     
-            return result;
+            return result; */
         }
-        throw new Error('Database is not reachable or active.');
+        return 'Database is not reachable or active.';
+
+        } catch(err:any) {
+            console.error(err.message);
+            throw err;
+        }
+        
 
 
 
@@ -122,6 +154,8 @@ class LingoService {
         const result = await db_chain.run(payload.userInput);
         return result; */
     }
+
+
 
     private async cleanSQLQuery(query: any) {
         const cleanedQuery = query.replace(/\n/g, ' ');
