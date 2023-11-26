@@ -17,6 +17,11 @@ interface convoPayload {
     message: string;
 }
 
+interface connectDBPayload {
+    dbType: any,
+    dbURI: string,
+}
+
 interface askYourDBPayload {
     dbType: any,
     dbURI: string,
@@ -41,9 +46,8 @@ response ""
 
 class LingoService {
 
-    constructor(
-        private model =  new ChatOpenAI({ openAIApiKey: OpenAIKey, temperature: 0.9, })
-    ){}
+    private model =  new ChatOpenAI({ openAIApiKey: OpenAIKey, temperature: 0.9, })
+    private database: SqlDatabase | null = null;
 
     public async convertUserInputToSQL(userInput: convoPayload) {
         const agentPrompt: string = "Given the user's input: {userInput}, generate a well-structured SQL query that effectively captures the user's intent. Provide only the SQL query, ensuring it is suitable for retrieving relevant data from the database."
@@ -66,47 +70,59 @@ class LingoService {
         
     }
 
-    public async askYourDB(payload: askYourDBPayload) {
-        const prompt = new PromptTemplate({
-            inputVariables: ["query","result"],
-            template: template
-        });
-
+    private async connectToDB(payload:askYourDBPayload) {
         try {
-            let port: number;
+            let port = payload.dbType === 'postgres' ? 5432 : 3306;
+            const grabURIInfo = await this.extractConnectionDetails(payload.dbURI);
+            const isDatabaseUP = await this.pingDatabase(grabURIInfo.hostname, port);
 
-        if (payload.dbType === 'postgres') {
-            port = 5432;
-        } else {
-            port = 3306;
+            if (!isDatabaseUP) {
+                throw new Error('Database is not active or reachable.');
+            }
+
+            if (isDatabaseUP) {
+                console.info('Database is up and active');
+                this.database = await SqlDatabase.fromDataSourceParams({
+                    appDataSource:  new DataSource({
+                        type: payload.dbType,
+                        database: grabURIInfo.database,
+                        host: grabURIInfo.hostname,
+                        port: port,
+                        username: grabURIInfo.username,
+                        password: grabURIInfo.password,
+                        ssl: { rejectUnauthorized: true }
+                    })
+                });
+                console.info("Connected to the database:");
+                return this.database;
+            }
+        } catch (err:any) {
+            console.error("Error connecting to your database:", err);
+            throw err;
         }
+        
+    }
 
-        const grabURIInfo = await this.extractConnectionDetails(payload.dbURI);
 
-        const isDatabaseUP = await this.pingDatabase(grabURIInfo.hostname, port);
+    public async askYourDB(payload: askYourDBPayload) {
+        try {
+            if (!this.database) {
+                await this.connectToDB(payload);
+            }
+            if (this.database) {
+                const db_chain = new SqlDatabaseChain({
+                    llm: this.model,
+                    database: this.database,
+                    verbose: true,
+                });
 
-        if (isDatabaseUP) {
-            console.info('Database is up and active');
-
-            /* const datasource = new DataSource({
-                type: payload.dbType,
-                database: payload.dbURI,
-            }); */
-
-            const db = await SqlDatabase.fromDataSourceParams({
-                appDataSource:  new DataSource({
-                    type: payload.dbType,
-                    database: payload.dbURI,
-                    host: grabURIInfo.hostname,
-                    port: port,
-                    username: grabURIInfo.username,
-                    password: grabURIInfo.password
-                })
-            });
-
-            console.info("Connected to the database:", db);
+                const result = await db_chain.run(payload.userInput);
+                return result;
+            } else {
+                throw new Error('Database connection not established.');
+            }
     
-            const toolkit = new SqlToolkit(db, this.model);
+            /* const toolkit = new SqlToolkit(db, this.model);
             const executor = createSqlAgent(this.model, toolkit);
     
             console.log(`Executing with input "${payload.userInput}"...`);
@@ -115,10 +131,7 @@ class LingoService {
     
             console.log(`Got output ${result.output}`);
     
-            return result;
-        }
-        return 'Database is not reachable or active.';
-
+            return result */;
         } catch(err:any) {
             console.error(err.message);
             throw err;
