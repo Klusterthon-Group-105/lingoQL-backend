@@ -5,10 +5,9 @@ import { PromptTemplate } from "langchain/prompts";
 import { ChatOpenAI } from "langchain/chat_models/openai";
 import { CSVLoader } from "langchain/document_loaders/fs/csv";
 import { SqlDatabase } from "langchain/sql_db";
-import { DataSourceOptions, DataSource } from "typeorm";
+import { DataSource } from "typeorm";
 import { SqlDatabaseChain } from "langchain/chains/sql_db";
 import { createSqlAgent, SqlToolkit } from "langchain/agents/toolkits/sql";
-import { Client } from 'pg';
 
 
 dotenv.config();
@@ -67,10 +66,7 @@ class LingoService {
         
     }
 
-
     public async askYourDB(payload: askYourDBPayload) {
-        // const client = new Client({ connectionString: payload.dbURI });
-        // await client.connect();
         const prompt = new PromptTemplate({
             inputVariables: ["query","result"],
             template: template
@@ -92,30 +88,23 @@ class LingoService {
         if (isDatabaseUP) {
             console.info('Database is up and active');
 
-            const datasource = new DataSource({
+            /* const datasource = new DataSource({
                 type: payload.dbType,
                 database: payload.dbURI,
-            });
+            }); */
 
             const db = await SqlDatabase.fromDataSourceParams({
-                appDataSource: datasource,
+                appDataSource:  new DataSource({
+                    type: payload.dbType,
+                    database: payload.dbURI,
+                    host: grabURIInfo.hostname,
+                    port: port,
+                    username: grabURIInfo.username,
+                    password: grabURIInfo.password
+                })
             });
 
-            console.log('Database info:', db);
-
-            const db_chain = new SqlDatabaseChain({
-                llm: this.model,
-                database: db,
-                verbose: true,
-                prompt: prompt
-            });
-
-            console.log('Database info:', db_chain);
-
-            const result = await db_chain.run(payload.userInput);
-            return result
-
-            /* console.info("Connected to the database:", db);
+            console.info("Connected to the database:", db);
     
             const toolkit = new SqlToolkit(db, this.model);
             const executor = createSqlAgent(this.model, toolkit);
@@ -126,7 +115,7 @@ class LingoService {
     
             console.log(`Got output ${result.output}`);
     
-            return result; */
+            return result;
         }
         return 'Database is not reachable or active.';
 
@@ -154,8 +143,6 @@ class LingoService {
         const result = await db_chain.run(payload.userInput);
         return result; */
     }
-
-
 
     private async cleanSQLQuery(query: any) {
         const cleanedQuery = query.replace(/\n/g, ' ');
@@ -197,6 +184,7 @@ class LingoService {
             database: parsedUrl.pathname.substring(1),
         };
     }
+
 }
 
 
