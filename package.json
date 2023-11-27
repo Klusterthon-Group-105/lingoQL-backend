@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "format": "prettier --write .",
     "postinstall": "tsc",
     "start": "node ./dist/server.js",
     "start:dev": "nodemon ./src/server.ts",
@@ -43,6 +44,7 @@
     "@types/multer": "^1.4.11",
     "@types/pg": "^8.10.9",
     "nodemon": "^3.0.1",
+    "prettier": "^3.1.0",
     "typescript": "^5.3.2"
   }
 }
