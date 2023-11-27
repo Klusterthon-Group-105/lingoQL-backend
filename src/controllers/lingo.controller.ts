@@ -1,32 +1,21 @@
 import { Request, Response } from 'express';
 import LingoService from '../services/lingo.service';
+import { logger } from '../utils';
+import CustomErrorHandler from '../utils/custom-error-handler';
 
-
-const lingoService = new LingoService();
+const lingoService: LingoService = new LingoService();
+const customErrorHandler: CustomErrorHandler = new CustomErrorHandler();
 
 class LingoController {
-
-    public async convertUserInputToSQL(req: Request, res: Response) {
-        try {
-            const userInput = req.body;
-            const response = await lingoService.convertUserInputToSQL(userInput);
-            return res.status(200).json(response);
-        } catch(err:any) {
-            console.error('Input_To_SQL error:', err);
-            throw err;
-        }
+  public async askYourDB(req: Request, res: Response) {
+    try {
+      const response = await lingoService.askYourDB(req.body);
+      return res.status(200).json(response);
+    } catch (err: any) {
+      logger.error(`Ask Your DB error:, ${err}`);
+      return await customErrorHandler.handleCustomError(err, res);
     }
-
-    public async askYourDB(req: Request, res: Response){
-        try {
-            const response = await lingoService.askYourDB(req.body);
-            return res.status(200).json(response);
-        } catch(err:any) {
-            console.error('Ask Your DB error:', err);
-            throw err;
-        }
-    }
-
+  }
 }
 
 export default LingoController;

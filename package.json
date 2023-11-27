@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "format": "prettier --write .",
     "postinstall": "tsc",
     "start": "node ./dist/server.js",
     "start:dev": "nodemon ./src/server.ts",
@@ -33,7 +34,8 @@
     "mysql2": "^3.6.5",
     "pg": "^8.11.3",
     "pg-promise": "^11.5.4",
-    "typeorm": "^0.3.17"
+    "typeorm": "^0.3.17",
+    "winston": "^3.11.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
@@ -42,6 +44,7 @@
     "@types/multer": "^1.4.11",
     "@types/pg": "^8.10.9",
     "nodemon": "^3.0.1",
+    "prettier": "^3.1.0",
     "typescript": "^5.3.2"
   }
 }
