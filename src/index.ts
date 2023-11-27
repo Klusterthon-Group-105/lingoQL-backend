@@ -1,6 +1,7 @@
 import express, { Express, Request, Response } from 'express';
 import * as dotenv from 'dotenv';
 import morgan from 'morgan';
+import cors from 'cors';
 
 import LingoRoute from './routes/lingo.route';
 
@@ -9,6 +10,13 @@ dotenv.config();
 const app: Express = express();
 
 // Middleware
+app.use(
+    cors({
+      origin: '*',
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+      credentials: true,
+    }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(morgan('dev'));
