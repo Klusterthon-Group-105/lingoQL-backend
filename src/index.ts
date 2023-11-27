@@ -12,7 +12,7 @@ const app: Express = express();
 // Middleware
 app.use(
     cors({
-      origin: '*',
+      origin: 'https://lingoql.onrender.com',
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
       credentials: true,
     }),
